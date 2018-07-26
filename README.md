@@ -1,7 +1,7 @@
 
 # ParticleCloud shaders
 Some shaders + unity setup to have purely shader-based manipulatable particles usable in VRChat
-#### Unity package download located in [releases](releases)!
+#### Unity package download located in [releases](../../releases)!
 **WARNING**: There's a crash bug that can take you and your friends out unexpectedly
 Report available at [VRChat Canny](https://vrchat.canny.io/bug-reports/p/crash-when-using-grabpass-with-uncommon-format-render-target) *TLDR: triggered by coming in contact with screen-grabbing shaders like zoom/distortion/reflection.  **Usage in public worlds is STRONGLY DISCOURAGED***  
   
