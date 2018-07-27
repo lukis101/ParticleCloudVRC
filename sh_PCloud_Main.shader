@@ -4,12 +4,13 @@ Properties
 {
 	[NoScaleOffset]
 	_Buffer ("Buffer", 2D) = "gray" {}
-	_Rst    ("Reset", Int) = 0
-	_Str    ("Strength", Range(-5.0, 5.0)) = 1.0000
+	[Toggle] _Rst ("Reset", Float) = 0
 	_Drag   ("Drag",  Range( 0.0,  3.0)) = 0.5
 	_Nstr   ("Noise", Range( 0.0,  1.0)) = 0.5
-	_Fdecay_l ("Force decay: linear", Range( 0.0,  1.0)) = 0.15
-	_Fdecay_q ("Force decay: quadratic", Range( 0.0,  1.0)) = 0.25
+	[Header(Manipulation force)]
+	_Str    ("Strength", Range(-5.0, 5.0)) = 1.0000
+	_Fdecay_l ("Decay: linear", Range( 0.0,  1.0)) = 0.15
+	_Fdecay_q ("Decay: quadratic", Range( 0.0,  1.0)) = 0.25
 }
 SubShader
 {
@@ -37,8 +38,7 @@ SubShader
 
 		Texture2D<float4> _Buffer;
 
-		int   _Rst;
-		int   _Stage;
+		float _Rst;
 		float _Str;
 		float _Drag;
 		float _Nstr;
@@ -80,8 +80,8 @@ SubShader
 				if (i.uv.x < 0.5)
 					return EncodeColor(float4(manips[0].x+i.uv.x*WIDTH*2-WIDTH/2,
 							manips[0].y+i.uv.y*WIDTH-WIDTH/2, manips[0].z, 0));
-				else // no velocity
-					return EncodeColor(float4(0,0,0,0));
+				else // a bit of velocity for angle-based color mode
+					return EncodeColor(float4(-0.01,0.001,0,0));
 			}
 
 			// TODO: interleave pos+velocity: data locality and no need to use resolution constant

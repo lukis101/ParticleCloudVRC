@@ -6,10 +6,15 @@ Properties
 	_Buffer   ("Particle buffer", 2D)  = "gray" {}
 	[NoScaleOffset] // TODO: support this
 	_MainTex  ("Particle texture", 2D) = "white" {}
-	_Size     ("Size", Range(0., 1.)) = 0.1
-	_Segments ("Mesh divisions", Range(1., 32.)) = 1.0
-	_Factor   ("Subdivisions",   Range(1., 64.)) = 4.0
-	_Glow     ("Glow", Range(0., 1.7)) = 1.0
+	_Size     ("Size", Range(0., 1.)) = 0.3
+	[Header(Mesh and texture setup)]
+	[IntRange] _Segments ("Mesh divisions", Range(1, 32)) = 1
+	[IntRange] _Factor   ("Subdivisions",   Range(1, 64)) = 4
+	[Header(Particle colors)]
+	[KeywordEnum(Angle, Static)]
+	_ColMode    ("Color mode",   Float) = 0
+	_SColor     ("Static Color", Color) = (1.,1.,1.,1.)
+	_Brightness ("Brightness",   Range(0., 1.7)) = 1.0
 }
 SubShader
 {
@@ -29,6 +34,7 @@ SubShader
 		#pragma domain doma
 		#pragma geometry geom
 		#pragma fragment frag
+		#pragma multi_compile _COLMODE_ANGLE _COLMODE_STATIC
 
 		#include "UnityCG.cginc"
 		#include "PCloud_Util.cginc"
@@ -39,7 +45,8 @@ SubShader
 		uniform float _Size;
 		uniform float _Segments;
 		uniform float _Factor;
-		uniform float _Glow;
+		uniform float _Brightness;
+		uniform float4 _SColor;
 
 		struct vs_in
 		{
@@ -68,7 +75,7 @@ SubShader
 
 		struct PatchConstData
 		{
-			float edges[4] : SV_TessFactor;
+			float edges[4]  : SV_TessFactor;
 			float inside[2] : SV_InsideTessFactor;
 		};
 
@@ -145,14 +152,18 @@ SubShader
 			float3 wpos = state_pos.xyz;
 			
 			// Coloring
+		#ifdef _COLMODE_ANGLE
 			static const float PI = 3.14159265f;
 			float angle_xy = (atan2(state_vel.x, state_vel.z)+PI)/(2*PI);
 			float angle_yz = (atan2(state_vel.y, state_vel.z)+PI)/(2*PI);
 			float angsum = angle_xy+angle_yz;
 			if (angsum > 1.0) angsum -= 1.0;
-			o.col = float4(HUEtoRGB(angsum), 1); // TODO
+			o.col = float4(HUEtoRGB(angsum), 1);
 			// (Optional)Reduce color strengh - lessens saturation from additive blending with high particle density
 			o.col = normalize(o.col); // Should probably do simple mult for performance...
+		#elif _COLMODE_STATIC
+			o.col = _SColor;
+		#endif
 
 			// Generate billboard triangle
 			float3 right = UNITY_MATRIX_V._m00_m01_m02;
@@ -187,7 +198,7 @@ SubShader
 		{
 			fixed4 tex = _MainTex.SampleLevel(sampler_MainTex, i.uv, 0);
 			fixed4 colored = i.col*tex;
-			return fixed4(colored.rgb*(colored.a*_Glow), colored.a);
+			return fixed4(colored.rgb*(colored.a*_Brightness), colored.a);
 		}
 		ENDCG
 	}
