@@ -9,7 +9,6 @@ Properties
 	_Size     ("Size", Range(0., 1.)) = 0.3
 	[Header(Mesh and texture setup)]
 	[IntRange] _Segments ("Mesh divisions", Range(1, 32)) = 1
-	[IntRange] _Factor   ("Subdivisions",   Range(1, 64)) = 4
 	[Header(Particle colors)]
 	[KeywordEnum(Angle, Static)]
 	_ColMode    ("Color mode",   Float) = 0
@@ -40,11 +39,11 @@ SubShader
 		#include "PCloud_Util.cginc"
 
 		Texture2D<float4> _Buffer;
+		float4 _Buffer_TexelSize;
 		Texture2D     _MainTex;
 		SamplerState  sampler_MainTex;
 		uniform float _Size;
-		uniform float _Segments;
-		uniform float _Factor;
+		uniform uint  _Segments;
 		uniform float _Brightness;
 		uniform float4 _SColor;
 
@@ -91,9 +90,16 @@ SubShader
 
 		PatchConstData PatchConstFunc(InputPatch<tess_in, 4> patch)
 		{
+			// determine subdivision count from texture and mesh resolutions
+			float factor = _Buffer_TexelSize.w/_Segments;
+			if (factor > 64) // Mesh too small!
+			{
+				// Can't raise compile error. Reduce particles to show sth is wrong
+				factor = 64/_Segments;
+			}
 			PatchConstData o;
-			o.edges[0] = o.edges[1] = o.edges[2] = o.edges[3] = _Factor;
-			o.inside[0] = o.inside[1] = _Factor;
+			o.edges[0] = o.edges[1] = o.edges[2] = o.edges[3] = factor;
+			o.inside[0] = o.inside[1] = factor;
 			return o;
 		}
 
@@ -141,23 +147,23 @@ SubShader
 			float yavg = (tri[0].uv.y+tri[1].uv.y+tri[2].uv.y)/3;
 			if (ycent < yavg) return; // discard lower quad half
 			
-			uint resolution = _Segments*_Factor;
-			float pixsize = 1.0/resolution;
-			uint nx = uv_min.x/pixsize;  // pixel x coord
-			uint ny = uv_min.y/pixsize;  // pixel y coord
-			//uint pid = ny*resolution+nx; // particle index/id
+			uint nx = uv_min.x*_Buffer_TexelSize.z;  // pixel x coord
+			uint ny = uv_min.y*_Buffer_TexelSize.w;  // pixel y coord
+			//uint pid = ny*_Buffer_TexelSize.z+nx;    // particle index/id
+			
 			
 			float4 state_pos = DecodeColor(_Buffer.Load(int3(nx,ny,0)));
-			float4 state_vel = DecodeColor(_Buffer.Load(int3(nx+resolution,ny,0)));
+			float4 state_vel = DecodeColor(_Buffer.Load(int3(nx+1,ny,0)));
 			float3 wpos = state_pos.xyz;
 			
 			// Coloring
 		#ifdef _COLMODE_ANGLE
 			static const float PI = 3.14159265f;
-			float angle_xy = (atan2(state_vel.x, state_vel.z)+PI)/(2*PI);
-			float angle_yz = (atan2(state_vel.y, state_vel.z)+PI)/(2*PI);
-			float angsum = angle_xy+angle_yz;
-			if (angsum > 1.0) angsum -= 1.0;
+			static const float PI2_INV = 1/(2*PI);
+			float angle_xz = (atan2(state_vel.x, state_vel.z)+PI)*PI2_INV;
+			float angle_yz = (atan2(state_vel.y, state_vel.z)+PI)*PI2_INV;
+			float angsum = angle_xz+angle_yz;
+			if (angsum > 1.0) angsum -= 1.0; // or use frac()
 			o.col = float4(HUEtoRGB(angsum), 1);
 			// (Optional)Reduce color strengh - lessens saturation from additive blending with high particle density
 			o.col = normalize(o.col); // Should probably do simple mult for performance...

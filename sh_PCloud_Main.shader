@@ -33,17 +33,16 @@ SubShader
 
 		// Reset particles to manipulator when too far
 		#define RESET_DIST 6
-		// Resolution(height) of state buffer texture
-		#define RESOLUTION 256
 
 		Texture2D<float4> _Buffer;
+		float4 _Buffer_TexelSize;
 
-		float _Rst;
-		float _Str;
-		float _Drag;
-		float _Nstr;
-		float _Fdecay_l;
-		float _Fdecay_q;
+		uniform float _Rst;
+		uniform float _Str;
+		uniform float _Drag;
+		uniform float _Nstr;
+		uniform float _Fdecay_l;
+		uniform float _Fdecay_q;
 
 		struct fs_in
 		{
@@ -59,7 +58,7 @@ SubShader
 			// if its not the target,so its not rendered for players and etc
 			fs_in o;
 			o.pos = UnityObjectToClipPos(vertex);
-			o.uv  = ComputeScreenPos(UnityObjectToClipPos(vertex));
+			o.uv  = ComputeScreenPos(o.pos);
 			return o;
 		}
 
@@ -73,22 +72,22 @@ SubShader
 			manips[0] = float4(_WorldSpaceCameraPos, _Str); // main camera
 			manips[1] = ReadBuff(int3(0,0,0)); // buffer camera
 
+			uint isvelo = ((uint)i.pos.x)%2;
 			//if (_Rst) return float4(0.5,0.5,0.5,1); // World origin
 			if (_Rst) // Plane around right hand
 			{
-				const float WIDTH = 2;
-				if (i.uv.x < 0.5)
-					return EncodeColor(float4(manips[0].x+i.uv.x*WIDTH*2-WIDTH/2,
-							manips[0].y+i.uv.y*WIDTH-WIDTH/2, manips[0].z, 0));
-				else // a bit of velocity for angle-based color mode
-					return EncodeColor(float4(-0.01,0.001,0,0));
+				static const float WIDTH = 2;
+				if (isvelo) // a bit of velocity for angle-based color mode
+					return EncodeColor(float4(-0.001,0.001,0,0));
+				else
+					return EncodeColor(float4(manips[0].x+i.uv.x*WIDTH-WIDTH/2, manips[0].y,
+							manips[0].z+i.uv.y*WIDTH-WIDTH/2, 0));
 			}
 
-			// TODO: interleave pos+velocity: data locality and no need to use resolution constant
-			if (i.uv.x >= 0.5) // Velocity
+			if (isvelo) // Velocity
 			{
 				float4 last_velo  = ReadBuff(i.pos.xyz);
-				float4 last_pos   = ReadBuff(int3(i.pos.x-RESOLUTION, i.pos.y, i.pos.z));
+				float4 last_pos   = ReadBuff(int3(i.pos.x-1, i.pos.y, 0));
 				float dist = distance(last_pos.xyz, manips[0].xyz);
 				if (dist > RESET_DIST)
 					return EncodeColor(float4(0,0,0,0)); // Reset to 0 velocity
@@ -97,7 +96,7 @@ SubShader
 			else // Position
 			{
 				float4 last_pos   = ReadBuff(i.pos.xyz);
-				float4 last_velo  = ReadBuff(int3(i.pos.x+RESOLUTION, i.pos.y, i.pos.z));
+				float4 last_velo  = ReadBuff(int3(i.pos.x+1, i.pos.y, 0));
 				float dist = distance(last_pos.xyz, manips[0].xyz);
 				if (dist > RESET_DIST)
 					return EncodeColor(float4(manips[0].xyz, 0)); // Reset pos
