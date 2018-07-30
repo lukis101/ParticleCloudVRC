@@ -17,8 +17,8 @@ SubShader
 	Tags { "Queue"="Overlay+1000" "IgnoreProjector"="True" "RenderType"="Overlay" "PreviewType"="Plane" "DisableBatching"="True" }
 	Blend Off
 	//Cull Off
-	ZWrite Off
-	//ZTest Always
+	ZWrite On
+	ZTest Always
 	ColorMask RGBA
 
 	Pass
@@ -54,11 +54,11 @@ SubShader
 		fs_in vert(float4 vertex : POSITION)
 		{
 			// TODO place vertices at camera near clip
-			// TODO 2 examine camera(clip?) to identify render target and hide
-			// if its not the target,so its not rendered for players and etc
 			fs_in o;
 			o.pos = UnityObjectToClipPos(vertex);
 			o.uv  = ComputeScreenPos(o.pos);
+			if (_ProjectionParams.y != CAMCLIP) // hide other cameras players
+				o.pos = float4(0,0,0,0);
 			return o;
 		}
 

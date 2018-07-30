@@ -4,6 +4,7 @@
 #include "noiseSimplex.cginc"
 
 #define SCALE 300.0 // Word coordinate range
+#define CAMCLIP -0.00390625f // special(non-approximated) camera near clip value
 
 float pos2color(float p)
 {

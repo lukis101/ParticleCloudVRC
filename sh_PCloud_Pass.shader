@@ -11,8 +11,8 @@ SubShader
     Tags { "Queue"="Overlay+1000" "IgnoreProjector"="True" "RenderType"="Overlay" "PreviewType"="Plane" "DisableBatching"="True"}
     Blend Off
 	//Cull Off
-	ZWrite Off
-	//ZTest Always
+	ZWrite On
+	ZTest Always
     ColorMask RGBA
 
 	Pass
@@ -32,6 +32,8 @@ SubShader
 		float4 vert(float4 vertex : POSITION) : SV_Position
 		{
 			// TODO place vertices at camera near clip
+			if (_ProjectionParams.y != CAMCLIP) // hide other cameras players
+				return float4(0,0,0,0);
 			return UnityObjectToClipPos(vertex);
 		}
 
